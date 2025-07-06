@@ -1,13 +1,21 @@
 
 
 
-<!-- index.html -->
-<!DOCTYPE html>
-<html>
-  <head>
-    <title>ポケモンスリープツール</title>
-  </head>
-  <body>
-    <h1>Hello, Pokémon Sleep!</h1>
-  </body>
-</html>
+<script>
+  document.getElementById("dataForm").addEventListener("submit", function(event) {
+    event.preventDefault();
+
+    const helpTime = parseFloat(document.getElementById("helpTime").value);
+    const ingredientRate = parseFloat(document.getElementById("ingredientRate").value);
+    const skillRate = parseFloat(document.getElementById("skillRate").value);
+    const timesObserved = parseInt(document.getElementById("timesObserved").value);
+
+    // 入力された値をコンソールに表示（まずは動作確認から！）
+    console.log("お手伝い時間:", helpTime);
+    console.log("食材確率:", ingredientRate);
+    console.log("スキル確率:", skillRate);
+    console.log("観測回数:", timesObserved);
+    
+    // 次は期待値と実績の比較やグラフ化に進めます！
+  });
+</script>
