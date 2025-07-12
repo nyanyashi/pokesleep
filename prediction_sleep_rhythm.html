@@ -7,25 +7,14 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
-        --bg: #f3fbff;
-        --text: #2c2c2c;
-    }
-
-    @media (prefers-color-scheme: dark) {
-    :root {
       --bg: #f3fbff;
-      --text: #c5c5c5;
+      --text: #2c2c2c;
     }
-    }
-
     @media (prefers-color-scheme: dark) {
-        input[type="time"] {
-            background-color: #1b2938;
-            color: #ffffff;
-            border: 1px solid #90caf9;
-            border-radius: 4px;
-            box-shadow: 0 0 3px rgba(144,202,249,0.6); /* ほんのり光らせる */
-        }
+      :root {
+        --bg: #0a1a28;
+        --text: #e0f0ff;
+      }
     }
     body {
       font-family: 'Helvetica Neue', sans-serif;
@@ -77,6 +66,14 @@
       margin: 1em auto;
       font-size: 1em;
     }
+    #rank {
+      font-size: 2.2em;
+      font-weight: bold;
+      color: #2970b8;
+    }
+    #reward, #reward-icon {
+      font-size: 1.6em;
+    }
     canvas {
       max-width: 90%;
       margin: 2em auto;
@@ -100,9 +97,11 @@
         background-color: #1f364e;
       }
       input[type="time"] {
-        background-color: #0a1a28;
-        color: var(--text);
-        border: 1px solid #666;
+        background-color: #1b2938;
+        color: #ffffff;
+        border: 1px solid #90caf9;
+        border-radius: 4px;
+        box-shadow: 0 0 3px rgba(144,202,249,0.6);
       }
     }
   </style>
@@ -117,7 +116,7 @@
     <h2>📝 睡眠データ入力</h2>
     <table>
       <thead>
-        <tr><th>曜日</th><th>①入眠</th><th>①起床</th><th>分睡</th><th>②入眠</th><th>②起床</th></tr>
+        <tr><th>曜日</th><th>①入眠</th><th>①起床</th><th>分眠</th><th>②入眠</th><th>②起床</th></tr>
       </thead>
       <tbody>
         <tr><td>月</td>
@@ -190,6 +189,11 @@
     <canvas id="sleepChart"></canvas>
   </section>
 
+  <section>
+    <h2>🌟 次回睡眠のアドバイス</h2>
+    <div id="next-sleep-advice"></div>
+  </section>
+
   <footer>
     <p>作成者: Takahashi | GitHub公開予定</p>
   </footer>
@@ -260,13 +264,51 @@ function formatTime(mins){
   return `${h}時間${m}分`;
 }
 
+function showAdvice(avgSleep, avgMid){
+  const advice = document.getElementById("next-sleep-advice");
+  if (!avgSleep || !avgMid) {
+    advice.innerHTML = "<p>過去のデータが少ないため、アドバイスは表示できません。</p>";
+    return;
+  }
+  const midHour = Math.floor(avgMid / 60);
+  const midMin  = Math.round(avgMid % 60);
+  const midStr  = `${String(midHour).padStart(2,"0")}:${String(midMin).padStart(2,"0")}`;
+  advice.innerHTML = `
+    <p>🌙 Sランクを目指すには、次回の睡眠パターンを以下に近づけてみましょう：</p>
+    <ul>
+      <li>🕒 睡眠時間：<strong>${formatTime(avgSleep)}</strong> 前後</li>
+      <li>🕐 ミッドスリープタイム：<strong>${midStr}</strong> ±30分</li>
+      <li>📅 できるだけ他の日と一貫したパターンが理想です</li>
+    </ul>`;
+}
+
+function saveInputs() {
+  const data = {};
+  document.querySelectorAll("input").forEach(i => {
+    data[i.name || i.id] = i.type === "checkbox" ? i.checked : i.value;
+  });
+  localStorage.setItem("sleepInputs", JSON.stringify(data));
+}
+
+function loadInputs() {
+  const saved = JSON.parse(localStorage.getItem("sleepInputs") || "{}");
+  for (const key in saved) {
+    const el = document.querySelector(`[name='${key}'], #${key}`);
+    if (el) {
+      if (el.type === "checkbox") el.checked = saved[key];
+      else el.value = saved[key];
+      if (el.type === "checkbox") toggleSleep2(key.split("_")[1]);
+    }
+  }
+}
+
 function updateResults(){
   const sleepTimes = [], midTimes = [];
 
   days.forEach(day => {
     const s1s = document.querySelector(`input[name='sleep1_start_${day}']`)?.value;
     const s1e = document.querySelector(`input[name='sleep1_end_${day}']`)?.value;
-    const en = document.getElementById(`enable2_${day}`).checked;
+    const en  = document.getElementById(`enable2_${day}`)?.checked;
     const s2s = document.querySelector(`input[name='sleep2_start_${day}']`)?.value;
     const s2e = document.querySelector(`input[name='sleep2_end_${day}']`)?.value;
 
@@ -303,6 +345,8 @@ function updateResults(){
   document.getElementById("avg-mid-time").textContent = avgMid ? `${String(midHour).padStart(2,"0")}:${String(midMin).padStart(2,"0")}` : "-";
 
   drawChart(sleepTimes, midTimes);
+  showAdvice(avgSleep, avgMid);
+  saveInputs();
 }
 
 function drawChart(sleepArr, midArr){
@@ -329,7 +373,7 @@ function drawChart(sleepArr, midArr){
     options: {
       responsive: true,
       plugins: { legend: { position: "top" } },
-      scales: { y: { suggestedMax: 600 } }
+      scales: { y: { suggestedMax: 800 } }
     }
   };
   if (chartInstance) chartInstance.destroy();
