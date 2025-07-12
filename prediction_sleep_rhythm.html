@@ -8,15 +8,17 @@
   <style>
     :root {
       --bg: #f3fbff;
-      --text: #333;
+      --text: #f5f5f5;
     }
-@media (prefers-color-scheme: dark) {
-  input[type="time"] {
-    background-color: #223344;
-    color: #ffffff;
-    border: 1px solid #aaa;
-  }
-}
+    @media (prefers-color-scheme: dark) {
+        input[type="time"] {
+            background-color: #1b2938;
+            color: #ffffff;
+            border: 1px solid #90caf9;
+            border-radius: 4px;
+            box-shadow: 0 0 3px rgba(144,202,249,0.6); /* ほんのり光らせる */
+        }
+    }
     body {
       font-family: 'Helvetica Neue', sans-serif;
       background-color: var(--bg);
