@@ -109,7 +109,7 @@
 <body>
   <header>
     <h1>🌙 睡眠リズム予測ツール</h1>
-    <p>入力済みのデータから星評価と安定度をリアルタイム表示します</p>
+    <p>入力済みのデータから、星評価・リズム安定度・理想パターンを予測します</p>
   </header>
 
   <section>
@@ -193,69 +193,66 @@
     <h2>🌟 次回睡眠のアドバイス</h2>
     <div id="next-sleep-advice"></div>
   </section>
-
+    <section>
+    <h2>🌛 分割睡眠の設定</h2>
+    <label for="napLength">短時間睡眠の長さ：</label>
+    <select id="napLength" onchange="updateResults()">
+        <option value="90">1時間30分</option>
+        <option value="120">2時間</option>
+        <option value="150">2時間30分</option>
+        <option value="180">3時間</option>
+    </select>
+    </section>
   <footer>
     <p>作成者: Takahashi | GitHub公開予定</p>
   </footer>
 
-  <script>
-    const days = ["mon","tue","wed","thu","fri","sat","sun"];
-    const jpDays = ["月","火","水","木","金","土","日"];
-    let chartInstance = null;
+<script>
+const days = ["mon","tue","wed","thu","fri","sat","sun"];
+const jpDays = ["月","火","水","木","金","土","日"];
+let chartInstance = null;
 
-    function toggleSleep2(day) {
-      const enabled = document.getElementById(`enable2_${day}`).checked;
-      document.querySelector(`input[name='sleep2_start_${day}']`).disabled = !enabled;
-      document.querySelector(`input[name='sleep2_end_${day}']`).disabled = !enabled;
-      updateResults();
-    }
+function toggleSleep2(day){
+  const en = document.getElementById(`enable2_${day}`).checked;
+  document.querySelector(`input[name='sleep2_start_${day}']`).disabled = !en;
+  document.querySelector(`input[name='sleep2_end_${day}']`).disabled = !en;
+  updateResults();
+}
 
-    function parseTime(t){ if(!t) return null; const [h,m] = t.split(":").map(Number); return new Date(1970,0,1,h,m); }
-    function timeDiff(s,e){ if(!s||!e) return 0; let d = (e - s)/60000; return d<0 ? d+1440 : d; }
+function parseTime(t){ if (!t) return null; const [h,m] = t.split(":").map(Number); return new Date(1970,0,1,h,m); }
+function timeDiff(s,e){ if (!s || !e) return 0; let d = (e - s)/60000; return d<0 ? d+1440 : d; }
 
-    function calculateDailySleep(s1s,s1e,s2s,s2e,en){
-      const d1 = timeDiff(parseTime(s1s), parseTime(s1e));
-      const d2 = en ? timeDiff(parseTime(s2s), parseTime(s2e)) : 0;
-      return Math.min(d1 + d2, 780);
-    }
+function calculateDailySleep(s1s,s1e,s2s,s2e,en){
+  const d1 = timeDiff(parseTime(s1s), parseTime(s1e));
+  const d2 = en ? timeDiff(parseTime(s2s), parseTime(s2e)) : 0;
+  return Math.min(d1 + d2, 780);
+}
 
-    function calculateMidSleep(s,e){
-      const start = parseTime(s), end = parseTime(e);
-      if (!start || !end) return null;
-      const smin = start.getHours()*60 + start.getMinutes();
-      const dur = timeDiff(start, end);
-      return (smin + dur/2) % 1440;
-    }
+function calculateMidSleep(s,e){
+  const start = parseTime(s), end = parseTime(e);
+  if (!start || !end) return null;
+  const smin = start.getHours()*60 + start.getMinutes();
+  const dur = timeDiff(start, end);
+  return (smin + dur/2) % 1440;
+}
 
-    function evaluateSleepStars(arr){
-      if (arr.length === 0) return 0;
-      const m = arr.reduce((a,b)=>a+b,0)/arr.length;
-      const sd = Math.sqrt(arr.reduce((a,b)=>a+Math.pow(b-m,2),0)/arr.length);
-      if (sd <= 60) return 3;
-      else if (sd <= 90) return 2;
-      else if (sd <= 120) return 1;
-      else return 0;
-    }
+function evaluateSleepStars(arr){ if (!arr.length) return 0;
+  const avg = arr.reduce((a,b)=>a+b,0)/arr.length;
+  const sd  = Math.sqrt(arr.reduce((a,b)=>a+Math.pow(b-avg,2),0)/arr.length);
+  if (sd <= 60) return 3; else if (sd <= 90) return 2; else if (sd <= 120) return 1; else return 0;
+}
 
-    function evaluateMidStars(arr){
-      if (arr.length === 0) return 0;
-      const m = arr.reduce((a,b)=>a+b,0)/arr.length;
-      const diffs = arr.map(v => Math.abs(v - m));
-      const max = Math.max(...diffs);
-      if (max <= 30) return 3;
-      else if (max <= 60) return 2;
-      else if (max <= 90) return 1;
-      else return 0;
-    }
-function evaluateRank(sleepStars, midStars){
-  const total = sleepStars + midStars;
-  if (total === 6) return { rank: "S", reward: "ばんのうアメS ×6" };
-  else if (total === 5) return { rank: "A", reward: "ばんのうアメS ×4" };
-  else if (total === 4) return { rank: "B", reward: "ばんのうアメS ×3" };
-  else if (total === 3) return { rank: "C", reward: "ばんのうアメS ×2" };
-  else if (total === 2) return { rank: "D", reward: "ばんのうアメS ×2" };
-  else if (total === 1) return { rank: "E", reward: "ばんのうアメS ×1" };
-  else return { rank: "F", reward: "ばんのうアメS ×1" };
+function evaluateMidStars(arr){ if (!arr.length) return 0;
+  const avg = arr.reduce((a,b)=>a+b,0)/arr.length;
+  const diffs = arr.map(v => Math.abs(v - avg));
+  const max = Math.max(...diffs);
+  if (max <= 30) return 3; else if (max <= 60) return 2; else if (max <= 90) return 1; else return 0;
+}
+
+function evaluateRank(s,m){
+  const total = s + m;
+  const reward = `ばんのうアメS ×${Math.max(total,1)}`;
+  return { rank: ["F","E","D","C","B","A","S"][total] || "F", reward };
 }
 
 function formatTime(mins){
@@ -264,46 +261,46 @@ function formatTime(mins){
   return `${h}時間${m}分`;
 }
 
-function showAdvice(avgSleep, avgMid){
-  const advice = document.getElementById("next-sleep-advice");
-  if (!avgSleep || !avgMid) {
-    advice.innerHTML = "<p>過去のデータが少ないため、アドバイスは表示できません。</p>";
-    return;
-  }
-  const midHour = Math.floor(avgMid / 60);
-  const midMin  = Math.round(avgMid % 60);
-  const midStr  = `${String(midHour).padStart(2,"0")}:${String(midMin).padStart(2,"0")}`;
-  advice.innerHTML = `
-    <p>🌙 Sランクを目指すには、次回の睡眠パターンを以下に近づけてみましょう：</p>
-    <ul>
-      <li>🕒 睡眠時間：<strong>${formatTime(avgSleep)}</strong> 前後</li>
-      <li>🕐 ミッドスリープタイム：<strong>${midStr}</strong> ±30分</li>
-      <li>📅 できるだけ他の日と一貫したパターンが理想です</li>
-    </ul>`;
+function formatClock(min){ const h = Math.floor(min/60)%24; const m = Math.round(min%60); return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`; }
+
+function drawChart(sArr, mArr){
+  const data = {
+    labels: jpDays,
+    datasets: [
+      { label: "睡眠時間（分）", data: sArr, backgroundColor: "#7fb8ff" },
+      { label: "ミッドスリープ（分）", data: mArr, borderColor: "#ffab91", type: "line", fill: false }
+    ]
+  };
+  const config = {
+    type: "bar",
+    data,
+    options: { responsive:true, plugins:{legend:{position:"top"}}, scales:{y:{suggestedMax:800}} }
+  };
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(document.getElementById("sleepChart"), config);
 }
 
-function saveInputs() {
+function saveInputs(){
   const data = {};
   document.querySelectorAll("input").forEach(i => {
-    data[i.name || i.id] = i.type === "checkbox" ? i.checked : i.value;
+    data[i.name || i.id] = i.type==="checkbox" ? i.checked : i.value;
   });
   localStorage.setItem("sleepInputs", JSON.stringify(data));
 }
 
-function loadInputs() {
+function loadInputs(){
   const saved = JSON.parse(localStorage.getItem("sleepInputs") || "{}");
-  for (const key in saved) {
+  for (const key in saved){
     const el = document.querySelector(`[name='${key}'], #${key}`);
-    if (el) {
+    if (el){
       if (el.type === "checkbox") el.checked = saved[key];
       else el.value = saved[key];
       if (el.type === "checkbox") toggleSleep2(key.split("_")[1]);
     }
   }
 }
-
 function updateResults(){
-  const sleepTimes = [], midTimes = [];
+  const sleepTimes = [], midTimes = [], validDays = [];
 
   days.forEach(day => {
     const s1s = document.querySelector(`input[name='sleep1_start_${day}']`)?.value;
@@ -312,11 +309,14 @@ function updateResults(){
     const s2s = document.querySelector(`input[name='sleep2_start_${day}']`)?.value;
     const s2e = document.querySelector(`input[name='sleep2_end_${day}']`)?.value;
 
-    const totalSleep = calculateDailySleep(s1s, s1e, s2s, s2e, en);
-    if (totalSleep > 0) sleepTimes.push(totalSleep);
-
     const d1 = timeDiff(parseTime(s1s), parseTime(s1e));
     const d2 = en ? timeDiff(parseTime(s2s), parseTime(s2e)) : 0;
+    const totalSleep = calculateDailySleep(s1s, s1e, s2s, s2e, en);
+
+    if (totalSleep > 0) {
+      sleepTimes.push(totalSleep);
+      validDays.push(day);
+    }
 
     let mid = null;
     if (d1 >= d2 && d1 > 0) mid = calculateMidSleep(s1s, s1e);
@@ -337,54 +337,85 @@ function updateResults(){
   document.getElementById("reward-icon").textContent = "🍬".repeat(candyCount);
 
   const avgSleep = sleepTimes.length ? Math.round(sleepTimes.reduce((a,b)=>a+b,0)/sleepTimes.length) : 0;
+  const avgMid   = midTimes.length ? Math.round(midTimes.reduce((a,b)=>a+b,0)/midTimes.length) : 0;
   document.getElementById("avg-sleep-time").textContent = avgSleep ? formatTime(avgSleep) : "-";
-
-  const avgMid = midTimes.length ? Math.round(midTimes.reduce((a,b)=>a+b,0)/midTimes.length) : 0;
-  const midHour = Math.floor(avgMid / 60);
-  const midMin  = Math.round(avgMid % 60);
-  document.getElementById("avg-mid-time").textContent = avgMid ? `${String(midHour).padStart(2,"0")}:${String(midMin).padStart(2,"0")}` : "-";
+  document.getElementById("avg-mid-time").textContent   = avgMid ? formatClock(avgMid) : "-";
 
   drawChart(sleepTimes, midTimes);
   showAdvice(avgSleep, avgMid);
   saveInputs();
 }
 
-function drawChart(sleepArr, midArr){
-  const data = {
-    labels: jpDays,
-    datasets: [
-      {
-        label: "睡眠時間（分）",
-        data: sleepArr,
-        backgroundColor: "#7fb8ff"
-      },
-      {
-        label: "ミッドスリープ（分）",
-        data: midArr,
-        borderColor: "#ffab91",
-        type: "line",
-        fill: false
-      }
-    ]
-  };
-  const config = {
-    type: "bar",
-    data,
-    options: {
-      responsive: true,
-      plugins: { legend: { position: "top" } },
-      scales: { y: { suggestedMax: 800 } }
-    }
-  };
-  if (chartInstance) chartInstance.destroy();
-  chartInstance = new Chart(document.getElementById("sleepChart"), config);
+function showAdvice(avgSleep, avgMid){
+  const advice = document.getElementById("next-sleep-advice");
+  if (!avgSleep || !avgMid) {
+    advice.innerHTML = "<p>過去のデータが少ないため、アドバイスは表示できません。</p>";
+    return;
+  }
+
+  // 基準値の範囲計算
+  const sleepMin = Math.max(avgSleep - 30, 240);
+  const sleepMax = Math.min(avgSleep + 30, 780);
+  const midMin   = (avgMid - 30 + 1440) % 1440;
+  const midMax   = (avgMid + 30) % 1440;
+
+  // 通常睡眠パターン（3種）
+  let patterns = "";
+  for (const hOffset of [-45, 0, 45]) {
+    const mid      = (avgMid + hOffset + 1440) % 1440;
+    const sleepDur = avgSleep;
+    const start    = (mid - sleepDur / 2 + 1440) % 1440;
+    const end      = (mid + sleepDur / 2) % 1440;
+    const type     = hOffset < 0 ? "① 早寝パターン" : hOffset > 0 ? "③ 遅寝パターン" : "② 安定パターン";
+    patterns += `
+      <li><strong>${type}</strong><br>
+        入眠: ${formatClock(start)} / 起床: ${formatClock(end)}<br>
+        <span style="color:gray;">（${formatTime(sleepDur)}・ミッドスリープ ${formatClock(mid)}）</span>
+      </li>`;
+  }
+
+  // 分割睡眠設定
+  const napLength = parseInt(document.getElementById("napLength")?.value || "90");
+  let splitPatterns = "";
+  for (const hOffset of [-45, 0, 45]) {
+    const mid         = (avgMid + hOffset + 1440) % 1440;
+    const longDur     = avgSleep - napLength;
+    const longStart   = (mid - longDur/2 + 1440) % 1440;
+    const longEnd     = (mid + longDur/2) % 1440;
+    const napStart    = 13 * 60;
+    const napEnd      = napStart + napLength;
+    const total       = formatTime(avgSleep);
+    const type        = hOffset < 0 ? "① 早寝型" : hOffset > 0 ? "③ 遅寝型" : "② 安定型";
+
+    splitPatterns += `
+      <li><strong>${type}</strong><br>
+        長時間睡眠: ${formatClock(longStart)}〜${formatClock(longEnd)}<br>
+        短時間睡眠: ${formatClock(napStart)}〜${formatClock(napEnd)}<br>
+        <span style="color:gray;">（合計 ${total}・ミッドスリープ ${formatClock(mid)}）</span>
+      </li>`;
+  }
+
+  // 表示生成
+  advice.innerHTML = `
+    <p>🌟 S評価を目指すには、以下の条件が目安となります：</p>
+    <ul>
+      <li>🕒 睡眠時間：<strong>${formatTime(sleepMin)}〜${formatTime(sleepMax)}</strong></li>
+      <li>🕐 ミッドスリープタイム：<strong>${formatClock(midMin)}〜${formatClock(midMax)}</strong></li>
+    </ul>
+
+    <h3>💤 通常睡眠の提案パターン</h3>
+    <ul>${patterns}</ul>
+
+    <h3>🌛 分割睡眠パターン（短時間睡眠：${formatTime(napLength)}）</h3>
+    <ul>${splitPatterns}</ul>
+  `;
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  loadInputs();
   document.querySelectorAll("input").forEach(i => {
     i.addEventListener("change", updateResults);
   });
   updateResults();
 });
-</script></body></html>
-     
+</script>
