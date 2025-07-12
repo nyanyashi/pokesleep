@@ -272,29 +272,35 @@ function formatTime(mins){
 }
 
 function formatClock(min){ const h = Math.floor(min/60)%24; const m = Math.round(min%60); return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`; }
-function drawChart(sArr, mArr){
+
+
+function drawChart(sleepTimes, midTimes){
   const ctx = document.getElementById("sleepChart").getContext("2d");
   const data = {
     labels: jpDays,
     datasets: [
       {
-        label: "睡眠時間（分）",
-        data: sArr,
-        backgroundColor: "#7fb8ff",
-        yAxisID: "ySleep"
-      },
-      {
         label: "ミッドスリープ（時刻）",
-        data: mArr,
-        borderColor: "#ff6f61",
-        backgroundColor: "#ff6f61",
+        data: midTimes,
         type: "line",
         yAxisID: "yMid",
-        tension: 0.3,
+        order: 2,
+        borderColor: "#ff6f61",
+        backgroundColor: "#ff6f61",
         borderWidth: 2,
+        tension: 0.4,
         pointRadius: 4,
         pointBackgroundColor: "#fff",
         pointBorderColor: "#ff6f61"
+      },
+      {
+        label: "睡眠時間（分）",
+        data: sleepTimes,
+        type: "bar",
+        yAxisID: "ySleep",
+        order: 1,
+        backgroundColor: "#7fb8ff",
+        barThickness: 5 // ここで棒の幅を調整
       }
     ]
   };
@@ -305,31 +311,46 @@ function drawChart(sArr, mArr){
     options: {
       responsive: true,
       plugins: {
-        legend: { position: "top" }
+        legend: { position: "top" },
+        tooltip: {
+          callbacks: {
+            label: context => {
+              const label = context.dataset.label || "";
+              const val = context.raw;
+              if (context.dataset.yAxisID === "yMid") {
+                const h = Math.floor(val / 60) % 24;
+                const m = Math.round(val % 60);
+                return `${label}: ${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+              }
+              return `${label}: ${val}分`;
+            }
+          }
+        }
       },
       scales: {
         ySleep: {
           type: "linear",
           position: "left",
           title: { display: true, text: "睡眠時間（分）" },
-          suggestedMax: 800,
+          min: 0,
+          max: 800,
           grid: { drawOnChartArea: true }
         },
         yMid: {
           type: "linear",
           position: "right",
-          title: { display: true, text: "ミッドスリープ（分）" },
+          title: { display: true, text: "ミッドスリープ（時刻）" },
+          min: 0,
+          max: 1440,
+          grid: { drawOnChartArea: false },
           ticks: {
             callback: val => {
               const h = Math.floor(val / 60) % 24;
               const m = Math.round(val % 60);
               return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
             },
-            stepSize: 60
-          },
-          min: 0,
-          max: 1440,
-          grid: { drawOnChartArea: false }
+            stepSize: 120 // 2時間刻みなど自由に調整可
+          }
         }
       }
     }
