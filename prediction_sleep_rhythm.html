@@ -7,9 +7,17 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
-      --bg: #f3fbff;
-      --text: #f5f5f5;
+        --bg: #f3fbff;
+        --text: #2c2c2c;
     }
+
+    @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #f3fbff;
+      --text: #c5c5c5;
+    }
+    }
+
     @media (prefers-color-scheme: dark) {
         input[type="time"] {
             background-color: #1b2938;
@@ -204,7 +212,7 @@
     function calculateDailySleep(s1s,s1e,s2s,s2e,en){
       const d1 = timeDiff(parseTime(s1s), parseTime(s1e));
       const d2 = en ? timeDiff(parseTime(s2s), parseTime(s2e)) : 0;
-      return Math.min(d1 + d2, 510);
+      return Math.min(d1 + d2, 780);
     }
 
     function calculateMidSleep(s,e){
