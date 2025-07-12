@@ -10,12 +10,13 @@
       --bg: #f3fbff;
       --text: #333;
     }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #0a1a28;
-        --text: #fff;
-      }
-    }
+@media (prefers-color-scheme: dark) {
+  input[type="time"] {
+    background-color: #223344;
+    color: #ffffff;
+    border: 1px solid #aaa;
+  }
+}
     body {
       font-family: 'Helvetica Neue', sans-serif;
       background-color: var(--bg);
