@@ -104,6 +104,16 @@
         box-shadow: 0 0 3px rgba(144,202,249,0.6);
       }
     }
+    button {
+    background-color: #e2f0ff;
+    border: 1px solid #99ccef;
+    padding: 0.4em 1em;
+    border-radius: 5px;
+    cursor: pointer;
+    }
+    button:hover {
+    background-color: #d2e8ff;
+    }
   </style>
 </head>
 <body>
@@ -175,12 +185,19 @@
   <section>
     <h2>📊 評価結果</h2>
     <div id="stars-summary">
-      <p>⭐ 睡眠時間の評価: <span id="sleep-stars">-</span></p>
-      <p>⭐ ミッドスリープタイムの評価: <span id="mid-stars">-</span></p>
-      <p>🕒 平均睡眠時間: <span id="avg-sleep-time">-</span></p>
-      <p>🕐 平均ミッドスリープタイム: <span id="avg-mid-time">-</span></p>
-      <p>🎖 評価ランク: <span id="rank">-</span></p>
-      <p>🎁 報酬アイテム: <span id="reward">-</span> <span id="reward-icon"></span></p>
+    <p>🎖 評価ランク: <span id="rank">-</span></p>
+    <p>🎁 報酬アイテム: <span id="reward">-</span> <span id="reward-icon"></span></p>
+
+    <button onclick="toggleDetails()">＋ 詳細を表示</button>
+
+    <div id="details-block" style="display:none; margin-top:1em;">
+        <p>⭐ 睡眠時間の評価: <span id="sleep-stars">-</span></p>
+        <p>⭐ ミッドスリープタイムの評価: <span id="mid-stars">-</span></p>
+        <p>🕒 平均睡眠時間: <span id="avg-sleep-time">-</span></p>
+        <p>📊 睡眠時間のばらつき: <span id="std-sleep">-</span></p>
+        <p>🕐 平均ミッドスリープタイム: <span id="avg-mid-time">-</span></p>
+        <p>📊 ミッドスリープのばらつき: <span id="std-mid">-</span></p>
+    </div>
     </div>
   </section>
 
@@ -193,16 +210,6 @@
     <h2>🌟 次回睡眠のアドバイス</h2>
     <div id="next-sleep-advice"></div>
   </section>
-    <section>
-    <h2>🌛 分割睡眠の設定</h2>
-    <label for="napLength">短時間睡眠の長さ：</label>
-    <select id="napLength" onchange="updateResults()">
-        <option value="90">1時間30分</option>
-        <option value="120">2時間</option>
-        <option value="150">2時間30分</option>
-        <option value="180">3時間</option>
-    </select>
-    </section>
   <footer>
     <p>作成者: Takahashi | GitHub公開予定</p>
   </footer>
@@ -242,11 +249,14 @@ function evaluateSleepStars(arr){ if (!arr.length) return 0;
   if (sd <= 60) return 3; else if (sd <= 90) return 2; else if (sd <= 120) return 1; else return 0;
 }
 
-function evaluateMidStars(arr){ if (!arr.length) return 0;
+function evaluateMidStars(arr){
+  if (!arr.length) return 0;
   const avg = arr.reduce((a,b)=>a+b,0)/arr.length;
-  const diffs = arr.map(v => Math.abs(v - avg));
-  const max = Math.max(...diffs);
-  if (max <= 30) return 3; else if (max <= 60) return 2; else if (max <= 90) return 1; else return 0;
+  const sd  = Math.sqrt(arr.reduce((a,b)=>a+Math.pow(b-avg,2),0)/arr.length);
+  if (sd <= 30) return 3;
+  else if (sd <= 60) return 2;
+  else if (sd <= 90) return 1;
+  else return 0;
 }
 
 function evaluateRank(s,m){
@@ -341,25 +351,61 @@ function updateResults(){
   document.getElementById("avg-sleep-time").textContent = avgSleep ? formatTime(avgSleep) : "-";
   document.getElementById("avg-mid-time").textContent   = avgMid ? formatClock(avgMid) : "-";
 
+    const sleepSD = sleepTimes.length ? Math.round(
+    Math.sqrt(sleepTimes.reduce((a,b) => a + Math.pow(b - avgSleep, 2), 0) / sleepTimes.length)
+    ) : 0;
+
+    const midSD = midTimes.length ? Math.round(
+    Math.sqrt(midTimes.reduce((a,b) => a + Math.pow(b - avgMid, 2), 0) / midTimes.length)
+    ) : 0;
+
+    document.getElementById("std-sleep").textContent = sleepSD ? `${sleepSD}分` : "-";
+    document.getElementById("std-mid").textContent   = midSD ? `${midSD}分` : "-";
+
   drawChart(sleepTimes, midTimes);
-  showAdvice(avgSleep, avgMid);
+  showAdvice(avgSleep, avgMid, sleepTimes, midTimes);
   saveInputs();
 }
 
-function showAdvice(avgSleep, avgMid){
+function showAdvice(avgSleep, avgMid, sleepTimes, midTimes){
   const advice = document.getElementById("next-sleep-advice");
+  advice.innerHTML = "";
+
   if (!avgSleep || !avgMid) {
     advice.innerHTML = "<p>過去のデータが少ないため、アドバイスは表示できません。</p>";
     return;
   }
 
-  // 基準値の範囲計算
+  // 再評価（現在の睡眠データによる）
+  const sleepStars = evaluateSleepStars(sleepTimes);
+  const midStars   = evaluateMidStars(midTimes);
+  const totalStars = sleepStars + midStars;
+
+  const rankMap = ["F", "E", "D", "C", "B", "A", "S"];
+  const bestRank = rankMap[Math.max(0, Math.min(totalStars, 7))];
+
+  // 条件範囲
   const sleepMin = Math.max(avgSleep - 30, 240);
   const sleepMax = Math.min(avgSleep + 30, 780);
   const midMin   = (avgMid - 30 + 1440) % 1440;
   const midMax   = (avgMid + 30) % 1440;
 
-  // 通常睡眠パターン（3種）
+  // S目標か代替目標かメッセージ切り替え
+  const goalMessage = totalStars === 6
+    ? `<p>🎯 現在の睡眠パターンは安定しており、<strong>Sランク</strong>が狙えます！</p>`
+    : `<p>🎯 現在の傾向では <strong>Sランクは困難</strong>ですが、<strong>${bestRank}ランク</strong>が目指せます！</p>`;
+
+  advice.innerHTML += goalMessage;
+
+  advice.innerHTML += `
+    <p>次回の睡眠は以下の条件を満たすと理想的です：</p>
+    <ul>
+      <li>🕒 睡眠時間：<strong>${formatTime(sleepMin)}〜${formatTime(sleepMax)}</strong></li>
+      <li>🕐 ミッドスリープタイム：<strong>${formatClock(midMin)}〜${formatClock(midMax)}</strong></li>
+    </ul>
+  `;
+
+  // 通常パターン（3つ）
   let patterns = "";
   for (const hOffset of [-45, 0, 45]) {
     const mid      = (avgMid + hOffset + 1440) % 1440;
@@ -374,7 +420,9 @@ function showAdvice(avgSleep, avgMid){
       </li>`;
   }
 
-  // 分割睡眠設定
+  advice.innerHTML += `<h3>💤 通常睡眠の提案パターン</h3><ul>${patterns}</ul>`;
+
+  // 分割睡眠：短時間選択＋3パターン提示
   const napLength = parseInt(document.getElementById("napLength")?.value || "90");
   let splitPatterns = "";
   for (const hOffset of [-45, 0, 45]) {
@@ -395,18 +443,14 @@ function showAdvice(avgSleep, avgMid){
       </li>`;
   }
 
-  // 表示生成
-  advice.innerHTML = `
-    <p>🌟 S評価を目指すには、以下の条件が目安となります：</p>
-    <ul>
-      <li>🕒 睡眠時間：<strong>${formatTime(sleepMin)}〜${formatTime(sleepMax)}</strong></li>
-      <li>🕐 ミッドスリープタイム：<strong>${formatClock(midMin)}〜${formatClock(midMax)}</strong></li>
-    </ul>
-
-    <h3>💤 通常睡眠の提案パターン</h3>
-    <ul>${patterns}</ul>
-
-    <h3>🌛 分割睡眠パターン（短時間睡眠：${formatTime(napLength)}）</h3>
+  advice.innerHTML += `
+    <h3>🌛 分割睡眠パターン（選択された短時間睡眠）</h3>
+    <label for="napLength">短時間睡眠の長さ：</label>
+    <select id="napLength" onchange="updateResults()" style="margin-bottom:1em;">
+      ${[90,120,150,180,210,240,270,300,330,360,390,420,450,480].map(v => 
+        `<option value="${v}" ${v===napLength?"selected":""}>${formatTime(v)}</option>`
+      ).join("")}
+    </select>
     <ul>${splitPatterns}</ul>
   `;
 }
@@ -418,4 +462,16 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   updateResults();
 });
+
+function toggleDetails() {
+  const block = document.getElementById("details-block");
+  const btn = event.target;
+  if (block.style.display === "none") {
+    block.style.display = "block";
+    btn.textContent = "－ 詳細を隠す";
+  } else {
+    block.style.display = "none";
+    btn.textContent = "＋ 詳細を表示";
+  }
+}
 </script>
